@@ -1,0 +1,31 @@
+input Identifier{
+  username:String
+  phonenumber:Float
+}
+
+input LoginInput{
+  identifier:Identifier!
+  password:String!
+}
+
+type User{
+  ID: ID
+  username:String
+  phonenumber:Float
+}
+
+type Query{
+  getuser:User
+}
+
+input UserInput{
+  username:String!
+  phonenumber:Float!
+  password:String!
+}
+
+type Mutation{
+  login(input:LoginInput):String!
+  signout:Boolean!
+  createaccount(input:UserInput!):Boolean!
+}
