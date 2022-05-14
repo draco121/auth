@@ -4,12 +4,14 @@ package graph
 // will be copied through when generating and any unknown code will be moved to the end.
 
 import (
+	"auth/custom_models"
 	"auth/database"
 	"auth/graph/generated"
 	"auth/graph/model"
 	"auth/utils"
 	"context"
 	"fmt"
+	"time"
 )
 
 func (r *mutationResolver) Login(ctx context.Context, input *model.LoginInput) (string, error) {
@@ -29,6 +31,8 @@ func (r *mutationResolver) Login(ctx context.Context, input *model.LoginInput) (
 					if err != nil {
 						return "", err
 					} else {
+						tokenmodel := custom_models.Token{Username: *user.Username, Token: token, Timestamp: time.Now().Unix()}
+						db.InsertToken(&tokenmodel)
 						return token, nil
 					}
 				} else {
@@ -48,6 +52,8 @@ func (r *mutationResolver) Login(ctx context.Context, input *model.LoginInput) (
 					if err != nil {
 						return "", err
 					} else {
+						tokenmodel := custom_models.Token{Username: *user.Username, Token: token, Timestamp: time.Now().Unix()}
+						db.InsertToken(&tokenmodel)
 						return token, nil
 					}
 				} else {
@@ -87,8 +93,21 @@ func (r *mutationResolver) Createaccount(ctx context.Context, input model.UserIn
 
 func (r *queryResolver) Getuser(ctx context.Context) (*model.User, error) {
 	sessionid, _ := ctx.Value("sessionid").(string)
-	return nil, fmt.Errorf(sessionid)
-	//panic(fmt.Errorf("not implemented"))
+	util := utils.Utils{}
+	db := database.Connect()
+	defer db.Disconnect()
+	username, err := util.ValidateJwt(sessionid)
+	if err != nil {
+		return nil, fmt.Errorf("unauthorized access")
+	} else {
+		user, err := db.FindOneByUsername(username)
+		if err != nil {
+			return nil, fmt.Errorf("user not fount")
+		} else {
+			result := model.User{ID: user.ID, Username: user.Username, Phonenumber: user.Phonenumber}
+			return &result, nil
+		}
+	}
 }
 
 // Mutation returns generated.MutationResolver implementation.

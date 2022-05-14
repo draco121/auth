@@ -7,7 +7,7 @@ type Token struct {
 }
 
 type User struct {
-	ID          *string  `json:"ID" bson:"_Id"`
+	ID          *string  `json:"_id" bson:"_id"`
 	Username    *string  `json:"username"`
 	Phonenumber *float64 `json:"phonenumber"`
 	Password    *string  `json:"password" bson:"password"`
