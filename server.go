@@ -1,6 +1,7 @@
 package main
 
 import (
+	"auth/database"
 	"auth/graph"
 	"auth/graph/generated"
 	"auth/startup"
@@ -15,12 +16,13 @@ import (
 func setUserContext() gin.HandlerFunc {
 
 	return func(ctx *gin.Context) {
-
+		items := graph.ContextItems{Database: database.Connect()}
 		sessionid := ctx.Request.Header.Get("sessionid")
 		if sessionid != "" {
-			c := context.WithValue(ctx.Request.Context(), "sessionid", sessionid)
-			ctx.Request = ctx.Request.WithContext(c)
+			items.Sessionid = &sessionid
 		}
+		c := context.WithValue(ctx.Request.Context(), "context_items", items)
+		ctx.Request = ctx.Request.WithContext(c)
 		ctx.Next()
 	}
 }

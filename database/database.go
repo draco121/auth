@@ -90,7 +90,7 @@ func (d *DB) FindOneAndDeleteToken(token string) (bool, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	filter := bson.M{"token": token}
-	err := coll.FindOneAndDelete(ctx, filter).Decode(nil)
+	_, err := coll.DeleteOne(ctx, filter)
 	if err != nil {
 		return false, err
 	} else {
@@ -100,7 +100,7 @@ func (d *DB) FindOneAndDeleteToken(token string) (bool, error) {
 
 func (d *DB) IsTokenExists(token string) (bool, error) {
 	coll := d.client.Database("auth").Collection("session")
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	filter := bson.M{"token": token}
 	var res *custom_models.Token

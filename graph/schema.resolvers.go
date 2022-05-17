@@ -14,62 +14,69 @@ import (
 	"time"
 )
 
+type ContextItems struct {
+	Sessionid *string
+	Database  *database.DB
+}
+
 func (r *mutationResolver) Login(ctx context.Context, input *model.LoginInput) (string, error) {
+	items, _ := ctx.Value("context_items").(ContextItems)
+	db := items.Database
 	if input.Identifier.Phonenumber == nil && input.Identifier.Username == nil {
 		return "", fmt.Errorf("please provide username or phonenumber")
 	} else {
+		var user *custom_models.User
+		var err error
 		if input.Identifier.Phonenumber != nil {
-			db := database.Connect()
-			defer db.Disconnect()
-			user, err := db.FindOneByPhonenumber(*input.Identifier.Phonenumber)
+			user, err = db.FindOneByPhonenumber(*input.Identifier.Phonenumber)
 			if err != nil {
 				return "", err
-			} else {
-				util := utils.Utils{}
-				if err := util.ComparePassword(*user.Password, input.Password); err == nil {
-					token, err := util.CreateJwt(*user.Username)
-					if err != nil {
-						return "", err
-					} else {
-						tokenmodel := custom_models.Token{Username: *user.Username, Token: token, Timestamp: time.Now().Unix()}
-						db.InsertToken(&tokenmodel)
-						return token, nil
-					}
-				} else {
-					return "", err
-				}
 			}
 		} else {
-			db := database.Connect()
-			defer db.Disconnect()
-			user, err := db.FindOneByUsername(*input.Identifier.Username)
+			user, err = db.FindOneByUsername(*input.Identifier.Username)
+			if err != nil {
+				return "", err
+			}
+		}
+		util := utils.Utils{}
+		if err := util.ComparePassword(*user.Password, input.Password); err == nil {
+			token, err := util.CreateJwt(*user.Username)
 			if err != nil {
 				return "", err
 			} else {
-				util := utils.Utils{}
-				if err := util.ComparePassword(*user.Password, input.Password); err == nil {
-					token, err := util.CreateJwt(*user.Username)
-					if err != nil {
-						return "", err
-					} else {
-						tokenmodel := custom_models.Token{Username: *user.Username, Token: token, Timestamp: time.Now().Unix()}
-						db.InsertToken(&tokenmodel)
-						return token, nil
-					}
-				} else {
-					return "", err
-				}
+				tokenmodel := custom_models.Token{Username: *user.Username, Token: token, Timestamp: time.Now().Unix()}
+				db.InsertToken(&tokenmodel)
+				return token, nil
 			}
+		} else {
+			return "", err
 		}
 	}
 }
 
 func (r *mutationResolver) Signout(ctx context.Context) (bool, error) {
-	panic(fmt.Errorf("not implemented"))
+	items, _ := ctx.Value("context_items").(ContextItems)
+	util := utils.Utils{}
+	db := items.Database
+	defer db.Disconnect()
+	sessionid := items.Sessionid
+	_, err := util.ValidateJwt(*sessionid)
+	if err != nil {
+		return false, err
+	} else {
+		_, err := db.IsTokenExists(*sessionid)
+		if err != nil {
+			return false, err
+		} else {
+			_, err := db.FindOneAndDeleteToken(*sessionid)
+			return true, err
+		}
+	}
 }
 
 func (r *mutationResolver) Createaccount(ctx context.Context, input model.UserInput) (bool, error) {
-	db := database.Connect()
+	items, _ := ctx.Value("context_items").(ContextItems)
+	db := items.Database
 	defer db.Disconnect()
 	_, err := db.FindOneByPhonenumber(input.Phonenumber)
 	if err != nil {
@@ -92,20 +99,25 @@ func (r *mutationResolver) Createaccount(ctx context.Context, input model.UserIn
 }
 
 func (r *queryResolver) Getuser(ctx context.Context) (*model.User, error) {
-	sessionid, _ := ctx.Value("sessionid").(string)
+	context, _ := ctx.Value("context_items").(ContextItems)
 	util := utils.Utils{}
-	db := database.Connect()
+	db := context.Database
 	defer db.Disconnect()
-	username, err := util.ValidateJwt(sessionid)
+	username, err := util.ValidateJwt(*context.Sessionid)
 	if err != nil {
 		return nil, fmt.Errorf("unauthorized access")
 	} else {
-		user, err := db.FindOneByUsername(username)
-		if err != nil {
-			return nil, fmt.Errorf("user not fount")
+		exists, err := db.IsTokenExists(*context.Sessionid)
+		if exists {
+			user, err := db.FindOneByUsername(username)
+			if err != nil {
+				return nil, fmt.Errorf("user not fount")
+			} else {
+				result := model.User{ID: user.ID, Username: user.Username, Phonenumber: user.Phonenumber}
+				return &result, nil
+			}
 		} else {
-			result := model.User{ID: user.ID, Username: user.Username, Phonenumber: user.Phonenumber}
-			return &result, nil
+			return nil, err
 		}
 	}
 }

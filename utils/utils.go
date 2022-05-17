@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"auth/database"
 	"auth/startup"
 	"fmt"
 	"time"
@@ -38,26 +37,18 @@ func (u *Utils) CreateJwt(username string) (string, error) {
 }
 
 func (u *Utils) ValidateJwt(token string) (string, error) {
-	db := database.Connect()
-	_, err := db.IsTokenExists(token)
+	tok, err := jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("an error occurred while parsing token")
+		}
+		return []byte(startup.Config.SecretKey), nil
+	})
 	if err != nil {
 		return "", err
+	}
+	if claims, ok := tok.Claims.(jwt.MapClaims); ok && tok.Valid {
+		return fmt.Sprint(claims["username"]), nil
 	} else {
-		tok, err := jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {
-			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-				return nil, fmt.Errorf("an error occurred while parsing token")
-			}
-			return []byte(startup.Config.SecretKey), nil
-		})
-		if err != nil {
-			_, err := db.FindOneAndDeleteToken(token)
-			return "", err
-		}
-		if claims, ok := tok.Claims.(jwt.MapClaims); ok && tok.Valid {
-			return fmt.Sprint(claims["username"]), nil
-		} else {
-			db.FindOneAndDeleteToken(token)
-			return "", fmt.Errorf("session expired")
-		}
+		return "", fmt.Errorf("session expired")
 	}
 }
