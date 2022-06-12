@@ -5,9 +5,11 @@ import (
 	"auth/graph/model"
 	"auth/startup"
 	"context"
+	"os"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -19,7 +21,11 @@ type DB struct {
 func Connect() *DB {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI(startup.Config.Mongodburi))
+	mongoUri := os.Getenv("MONGO_DB_URI")
+	if mongoUri == "" {
+		mongoUri = startup.Config.Mongodburi
+	}
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI(mongoUri))
 	if err != nil {
 		panic(err)
 	}
@@ -73,6 +79,24 @@ func (d *DB) FindOneByPhonenumber(phonenumber float64) (*custom_models.User, err
 	}
 }
 
+func (d *DB) FindOneByUserId(id string) (*custom_models.User, error) {
+	coll := d.client.Database("auth").Collection("users")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	var res *custom_models.User
+	objectId, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return nil, err
+	}
+	filter := bson.M{"_id": objectId}
+	err = coll.FindOne(ctx, filter).Decode(&res)
+	if err != nil {
+		return nil, err
+	} else {
+		return res, nil
+	}
+}
+
 func (d *DB) InsertToken(token *custom_models.Token) (bool, error) {
 	coll := d.client.Database("auth").Collection("session")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -105,6 +129,25 @@ func (d *DB) IsTokenExists(token string) (bool, error) {
 	filter := bson.M{"token": token}
 	var res *custom_models.Token
 	err := coll.FindOne(ctx, filter).Decode(&res)
+	if err != nil {
+		return false, err
+	} else {
+		return true, nil
+	}
+}
+
+func (d *DB) FindOneAndUpdateUsername(id string, newusername string) (bool, error) {
+	coll := d.client.Database("auth").Collection("users")
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	objectId, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return false, err
+	}
+	filter := bson.M{"_id": objectId}
+	update := bson.M{"$set": bson.M{"username": newusername}}
+	var res *custom_models.Token
+	err = coll.FindOneAndUpdate(ctx, filter, update).Decode(&res)
 	if err != nil {
 		return false, err
 	} else {

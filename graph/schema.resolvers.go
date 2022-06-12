@@ -14,43 +14,34 @@ import (
 	"time"
 )
 
-type ContextItems struct {
-	Sessionid *string
-	Database  *database.DB
-}
-
 func (r *mutationResolver) Login(ctx context.Context, input *model.LoginInput) (string, error) {
 	items, _ := ctx.Value("context_items").(ContextItems)
 	db := items.Database
-	if input.Identifier.Phonenumber == nil && input.Identifier.Username == nil {
-		return "", fmt.Errorf("please provide username or phonenumber")
-	} else {
-		var user *custom_models.User
-		var err error
-		if input.Identifier.Phonenumber != nil {
-			user, err = db.FindOneByPhonenumber(*input.Identifier.Phonenumber)
-			if err != nil {
-				return "", err
-			}
-		} else {
-			user, err = db.FindOneByUsername(*input.Identifier.Username)
-			if err != nil {
-				return "", err
-			}
-		}
-		util := utils.Utils{}
-		if err := util.ComparePassword(*user.Password, input.Password); err == nil {
-			token, err := util.CreateJwt(*user.Username)
-			if err != nil {
-				return "", err
-			} else {
-				tokenmodel := custom_models.Token{Username: *user.Username, Token: token, Timestamp: time.Now().Unix()}
-				db.InsertToken(&tokenmodel)
-				return token, nil
-			}
-		} else {
+	var user *custom_models.User
+	var err error
+	if input.Identifier.Phonenumber != nil {
+		user, err = db.FindOneByPhonenumber(*input.Identifier.Phonenumber)
+		if err != nil {
 			return "", err
 		}
+	} else {
+		user, err = db.FindOneByUsername(*input.Identifier.Username)
+		if err != nil {
+			return "", err
+		}
+	}
+	util := utils.Utils{}
+	if err := util.ComparePassword(*user.Password, input.Password); err == nil {
+		token, err := util.CreateJwt(*user.ID)
+		if err != nil {
+			return "", err
+		} else {
+			tokenmodel := custom_models.Token{UserId: *user.ID, Token: token, Timestamp: time.Now().Unix()}
+			db.InsertToken(&tokenmodel)
+			return token, nil
+		}
+	} else {
+		return "", err
 	}
 }
 
@@ -98,18 +89,31 @@ func (r *mutationResolver) Createaccount(ctx context.Context, input model.UserIn
 	}
 }
 
+func (r *mutationResolver) UpdateUserName(ctx context.Context, newusername string) (bool, error) {
+	context, _ := ctx.Value("context_items").(ContextItems)
+	util := utils.Utils{}
+	db := context.Database
+	defer db.Disconnect()
+	id, err := util.ValidateJwt(*context.Sessionid)
+	if err != nil {
+		return false, fmt.Errorf("unauthorized access")
+	} else {
+		return db.FindOneAndUpdateUsername(id, newusername)
+	}
+}
+
 func (r *queryResolver) Getuser(ctx context.Context) (*model.User, error) {
 	context, _ := ctx.Value("context_items").(ContextItems)
 	util := utils.Utils{}
 	db := context.Database
 	defer db.Disconnect()
-	username, err := util.ValidateJwt(*context.Sessionid)
+	id, err := util.ValidateJwt(*context.Sessionid)
 	if err != nil {
 		return nil, fmt.Errorf("unauthorized access")
 	} else {
 		exists, err := db.IsTokenExists(*context.Sessionid)
 		if exists {
-			user, err := db.FindOneByUsername(username)
+			user, err := db.FindOneByUserId(id)
 			if err != nil {
 				return nil, fmt.Errorf("user not fount")
 			} else {
@@ -130,3 +134,8 @@ func (r *Resolver) Query() generated.QueryResolver { return &queryResolver{r} }
 
 type mutationResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
+
+type ContextItems struct {
+	Sessionid *string
+	Database  *database.DB
+}

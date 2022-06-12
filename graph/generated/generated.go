@@ -44,9 +44,10 @@ type DirectiveRoot struct {
 
 type ComplexityRoot struct {
 	Mutation struct {
-		Createaccount func(childComplexity int, input model.UserInput) int
-		Login         func(childComplexity int, input *model.LoginInput) int
-		Signout       func(childComplexity int) int
+		Createaccount  func(childComplexity int, input model.UserInput) int
+		Login          func(childComplexity int, input *model.LoginInput) int
+		Signout        func(childComplexity int) int
+		UpdateUserName func(childComplexity int, newusername string) int
 	}
 
 	Query struct {
@@ -64,6 +65,7 @@ type MutationResolver interface {
 	Login(ctx context.Context, input *model.LoginInput) (string, error)
 	Signout(ctx context.Context) (bool, error)
 	Createaccount(ctx context.Context, input model.UserInput) (bool, error)
+	UpdateUserName(ctx context.Context, newusername string) (bool, error)
 }
 type QueryResolver interface {
 	Getuser(ctx context.Context) (*model.User, error)
@@ -114,6 +116,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.Signout(childComplexity), true
+
+	case "Mutation.updateUserName":
+		if e.complexity.Mutation.UpdateUserName == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateUserName_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UpdateUserName(childComplexity, args["newusername"].(string)), true
 
 	case "Query.getuser":
 		if e.complexity.Query.Getuser == nil {
@@ -244,6 +258,7 @@ type Mutation{
   login(input:LoginInput):String!
   signout:Boolean!
   createaccount(input:UserInput!):Boolean!
+  updateUserName(newusername:String!):Boolean!
 }`, BuiltIn: false},
 }
 var parsedSchema = gqlparser.MustLoadSchema(sources...)
@@ -279,6 +294,21 @@ func (ec *executionContext) field_Mutation_login_args(ctx context.Context, rawAr
 		}
 	}
 	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_updateUserName_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["newusername"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("newusername"))
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["newusername"] = arg0
 	return args, nil
 }
 
@@ -483,6 +513,61 @@ func (ec *executionContext) fieldContext_Mutation_createaccount(ctx context.Cont
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_createaccount_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_updateUserName(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_updateUserName(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().UpdateUserName(rctx, fc.Args["newusername"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_updateUserName(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_updateUserName_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return
 	}
@@ -2713,6 +2798,15 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_createaccount(ctx, field)
+			})
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "updateUserName":
+
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_updateUserName(ctx, field)
 			})
 
 			if out.Values[i] == graphql.Null {

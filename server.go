@@ -11,7 +11,13 @@ import (
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
+	log "github.com/sirupsen/logrus"
 )
+
+func setLogger() {
+	log.SetFormatter(&log.JSONFormatter{})
+}
 
 func setUserContext() gin.HandlerFunc {
 
@@ -48,12 +54,18 @@ func playgroundHandler() gin.HandlerFunc {
 }
 
 func main() {
-	startup.Initialize()
-	port := startup.Config.Port
+	err := godotenv.Load("config.env")
+	setLogger()
+	if err != nil {
+		startup.Initialize()
+		log.Error("Unable to load environment variables, loading from config.json", err)
+	}
+	port := os.Getenv("PORT")
 	if port == "" {
-		port = os.Getenv("PORT")
+		port = startup.Config.Port
 	}
 	r := gin.Default()
+	gin.SetMode(os.Getenv("GIN_MODE"))
 	r.Use(setUserContext())
 	r.POST("/query", graphqlHandler())
 	r.GET("/", playgroundHandler())

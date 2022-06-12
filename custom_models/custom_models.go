@@ -1,7 +1,7 @@
 package custom_models
 
 type Token struct {
-	Username  string `json:"username" bson:"username"`
+	UserId    string `json:"userid" bson:"userid"`
 	Token     string `json:"token" bson:"token"`
 	Timestamp int64  `json:"timestamp" bson:"timestamp"`
 }

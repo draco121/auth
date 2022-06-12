@@ -28,4 +28,5 @@ type Mutation{
   login(input:LoginInput):String!
   signout:Boolean!
   createaccount(input:UserInput!):Boolean!
+  updateUserName(newusername:String!):Boolean!
 }

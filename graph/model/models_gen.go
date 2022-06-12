@@ -13,7 +13,7 @@ type LoginInput struct {
 }
 
 type User struct {
-	ID          *string  `json:"ID" bson:"_id"`
+	ID          *string  `json:"ID"`
 	Username    *string  `json:"username"`
 	Phonenumber *float64 `json:"phonenumber"`
 }
