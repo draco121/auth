@@ -3,7 +3,7 @@
 package generated
 
 import (
-	"auth/graph/model"
+	"authentication/graph/model"
 	"bytes"
 	"context"
 	"errors"

@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"auth/startup"
 	"fmt"
 	"os"
 	"time"
@@ -25,9 +24,6 @@ func (u *Utils) ComparePassword(hashedpassword string, password string) error {
 
 func (u *Utils) CreateJwt(id string) (string, error) {
 	secretKey := os.Getenv("SECRET_KEY")
-	if secretKey == "" {
-		secretKey = startup.Config.SecretKey
-	}
 	var mySigningKey = []byte(secretKey)
 	token := jwt.New(jwt.SigningMethodHS256)
 	claims := token.Claims.(jwt.MapClaims)
@@ -43,9 +39,6 @@ func (u *Utils) CreateJwt(id string) (string, error) {
 
 func (u *Utils) ValidateJwt(token string) (string, error) {
 	secretKey := os.Getenv("SECRET_KEY")
-	if secretKey == "" {
-		secretKey = startup.Config.SecretKey
-	}
 	tok, err := jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("an error occurred while parsing token")

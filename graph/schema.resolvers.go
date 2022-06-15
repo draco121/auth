@@ -4,11 +4,11 @@ package graph
 // will be copied through when generating and any unknown code will be moved to the end.
 
 import (
-	"auth/custom_models"
-	"auth/database"
-	"auth/graph/generated"
-	"auth/graph/model"
-	"auth/utils"
+	"authentication/custom_models"
+	"authentication/database"
+	"authentication/graph/generated"
+	"authentication/graph/model"
+	"authentication/utils"
 	"context"
 	"fmt"
 	"time"

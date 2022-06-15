@@ -1,5 +1,0 @@
-{
-    "mongodburi":"mongodb://localhost:27017",
-    "port": "8080",
-    "secretkey":"rajeevchourey"
-}

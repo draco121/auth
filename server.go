@@ -1,10 +1,9 @@
 package main
 
 import (
-	"auth/database"
-	"auth/graph"
-	"auth/graph/generated"
-	"auth/startup"
+	"authentication/database"
+	"authentication/graph"
+	"authentication/graph/generated"
 	"context"
 	"os"
 
@@ -55,15 +54,11 @@ func playgroundHandler() gin.HandlerFunc {
 
 func main() {
 	err := godotenv.Load("config.env")
-	setLogger()
 	if err != nil {
-		startup.Initialize()
-		log.Error("Unable to load environment variables, loading from config.json", err)
+		panic("failed to start application, could not load environment configuration.")
 	}
+	setLogger()
 	port := os.Getenv("PORT")
-	if port == "" {
-		port = startup.Config.Port
-	}
 	r := gin.Default()
 	gin.SetMode(os.Getenv("GIN_MODE"))
 	r.Use(setUserContext())

@@ -1,9 +1,8 @@
 package database
 
 import (
-	"auth/custom_models"
-	"auth/graph/model"
-	"auth/startup"
+	"authentication/custom_models"
+	"authentication/graph/model"
 	"context"
 	"os"
 	"time"
@@ -22,9 +21,6 @@ func Connect() *DB {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	mongoUri := os.Getenv("MONGO_DB_URI")
-	if mongoUri == "" {
-		mongoUri = startup.Config.Mongodburi
-	}
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(mongoUri))
 	if err != nil {
 		panic(err)
