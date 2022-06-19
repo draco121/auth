@@ -93,45 +93,6 @@ func (d *DB) FindOneByUserId(id string) (*custom_models.User, error) {
 	}
 }
 
-func (d *DB) InsertToken(token *custom_models.Token) (bool, error) {
-	coll := d.client.Database("auth").Collection("session")
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	_, err := coll.InsertOne(ctx, token)
-	if err != nil {
-		return false, err
-	} else {
-		return true, nil
-	}
-}
-
-func (d *DB) FindOneAndDeleteToken(token string) (bool, error) {
-	coll := d.client.Database("auth").Collection("session")
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	filter := bson.M{"token": token}
-	_, err := coll.DeleteOne(ctx, filter)
-	if err != nil {
-		return false, err
-	} else {
-		return true, nil
-	}
-}
-
-func (d *DB) IsTokenExists(token string) (bool, error) {
-	coll := d.client.Database("auth").Collection("session")
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	filter := bson.M{"token": token}
-	var res *custom_models.Token
-	err := coll.FindOne(ctx, filter).Decode(&res)
-	if err != nil {
-		return false, err
-	} else {
-		return true, nil
-	}
-}
-
 func (d *DB) FindOneAndUpdateUsername(id string, newusername string) (bool, error) {
 	coll := d.client.Database("auth").Collection("users")
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)

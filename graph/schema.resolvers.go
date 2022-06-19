@@ -8,10 +8,10 @@ import (
 	"authentication/database"
 	"authentication/graph/generated"
 	"authentication/graph/model"
+	"authentication/grpcclient"
 	"authentication/utils"
 	"context"
 	"fmt"
-	"time"
 )
 
 func (r *mutationResolver) Login(ctx context.Context, input *model.LoginInput) (string, error) {
@@ -32,13 +32,12 @@ func (r *mutationResolver) Login(ctx context.Context, input *model.LoginInput) (
 	}
 	util := utils.Utils{}
 	if err := util.ComparePassword(*user.Password, input.Password); err == nil {
-		token, err := util.CreateJwt(*user.ID)
+		authorization_client, err := grpcclient.GetAuthorizationGrpcClient()
 		if err != nil {
 			return "", err
 		} else {
-			tokenmodel := custom_models.Token{UserId: *user.ID, Token: token, Timestamp: time.Now().Unix()}
-			db.InsertToken(&tokenmodel)
-			return token, nil
+			defer authorization_client.Close()
+			return authorization_client.CreateJWT(*user.ID)
 		}
 	} else {
 		return "", err
@@ -47,21 +46,15 @@ func (r *mutationResolver) Login(ctx context.Context, input *model.LoginInput) (
 
 func (r *mutationResolver) Signout(ctx context.Context) (bool, error) {
 	items, _ := ctx.Value("context_items").(ContextItems)
-	util := utils.Utils{}
 	db := items.Database
 	defer db.Disconnect()
 	sessionid := items.Sessionid
-	_, err := util.ValidateJwt(*sessionid)
+	authorization_client, err := grpcclient.GetAuthorizationGrpcClient()
 	if err != nil {
 		return false, err
 	} else {
-		_, err := db.IsTokenExists(*sessionid)
-		if err != nil {
-			return false, err
-		} else {
-			_, err := db.FindOneAndDeleteToken(*sessionid)
-			return true, err
-		}
+		defer authorization_client.Close()
+		return authorization_client.DeleteJWT(*sessionid)
 	}
 }
 
@@ -91,37 +84,42 @@ func (r *mutationResolver) Createaccount(ctx context.Context, input model.UserIn
 
 func (r *mutationResolver) UpdateUserName(ctx context.Context, newusername string) (bool, error) {
 	context, _ := ctx.Value("context_items").(ContextItems)
-	util := utils.Utils{}
 	db := context.Database
 	defer db.Disconnect()
-	id, err := util.ValidateJwt(*context.Sessionid)
+	authorization_client, err := grpcclient.GetAuthorizationGrpcClient()
 	if err != nil {
-		return false, fmt.Errorf("unauthorized access")
+		return false, err
 	} else {
-		return db.FindOneAndUpdateUsername(id, newusername)
+		defer authorization_client.Close()
+		res, err := authorization_client.ValidateJWT(*context.Sessionid)
+		if err != nil {
+			return false, err
+		} else {
+			return db.FindOneAndUpdateUsername(res, newusername)
+		}
 	}
 }
 
 func (r *queryResolver) Getuser(ctx context.Context) (*model.User, error) {
 	context, _ := ctx.Value("context_items").(ContextItems)
-	util := utils.Utils{}
 	db := context.Database
 	defer db.Disconnect()
-	id, err := util.ValidateJwt(*context.Sessionid)
+	authorization_client, err := grpcclient.GetAuthorizationGrpcClient()
 	if err != nil {
-		return nil, fmt.Errorf("unauthorized access")
+		return nil, err
 	} else {
-		exists, err := db.IsTokenExists(*context.Sessionid)
-		if exists {
-			user, err := db.FindOneByUserId(id)
+		defer authorization_client.Close()
+		res, err := authorization_client.ValidateJWT(*context.Sessionid)
+		if err != nil {
+			return nil, err
+		} else {
+			user, err := db.FindOneByUserId(res)
 			if err != nil {
-				return nil, fmt.Errorf("user not fount")
+				return nil, err
 			} else {
 				result := model.User{ID: user.ID, Username: user.Username, Phonenumber: user.Phonenumber}
 				return &result, nil
 			}
-		} else {
-			return nil, err
 		}
 	}
 }
