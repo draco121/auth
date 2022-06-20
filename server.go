@@ -33,7 +33,7 @@ func setUserContext() gin.HandlerFunc {
 					items.Userid = &res
 				}
 			} else {
-				return
+				*items.Userid = ""
 			}
 		}
 		c := context.WithValue(ctx.Request.Context(), "context_items", items)
