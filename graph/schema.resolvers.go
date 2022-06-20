@@ -45,16 +45,15 @@ func (r *mutationResolver) Login(ctx context.Context, input *model.LoginInput) (
 }
 
 func (r *mutationResolver) Signout(ctx context.Context) (bool, error) {
-	items, _ := ctx.Value("context_items").(ContextItems)
-	db := items.Database
+	context, _ := ctx.Value("context_items").(ContextItems)
+	db := context.Database
 	defer db.Disconnect()
-	sessionid := items.Sessionid
 	authorization_client, err := grpcclient.GetAuthorizationGrpcClient()
 	if err != nil {
 		return false, err
 	} else {
 		defer authorization_client.Close()
-		return authorization_client.DeleteJWT(*sessionid)
+		return authorization_client.DeleteJWT(*context.Userid)
 	}
 }
 
@@ -86,42 +85,21 @@ func (r *mutationResolver) UpdateUserName(ctx context.Context, newusername strin
 	context, _ := ctx.Value("context_items").(ContextItems)
 	db := context.Database
 	defer db.Disconnect()
-	authorization_client, err := grpcclient.GetAuthorizationGrpcClient()
-	if err != nil {
-		return false, err
-	} else {
-		defer authorization_client.Close()
-		res, err := authorization_client.ValidateJWT(*context.Sessionid)
-		if err != nil {
-			return false, err
-		} else {
-			return db.FindOneAndUpdateUsername(res, newusername)
-		}
-	}
+	return db.FindOneAndUpdateUsername(*context.Userid, newusername)
 }
 
 func (r *queryResolver) Getuser(ctx context.Context) (*model.User, error) {
 	context, _ := ctx.Value("context_items").(ContextItems)
 	db := context.Database
-	defer db.Disconnect()
-	authorization_client, err := grpcclient.GetAuthorizationGrpcClient()
+
+	user, err := db.FindOneByUserId(*context.Userid)
 	if err != nil {
 		return nil, err
 	} else {
-		defer authorization_client.Close()
-		res, err := authorization_client.ValidateJWT(*context.Sessionid)
-		if err != nil {
-			return nil, err
-		} else {
-			user, err := db.FindOneByUserId(res)
-			if err != nil {
-				return nil, err
-			} else {
-				result := model.User{ID: user.ID, Username: user.Username, Phonenumber: user.Phonenumber}
-				return &result, nil
-			}
-		}
+		result := model.User{ID: user.ID, Username: user.Username, Phonenumber: user.Phonenumber}
+		return &result, nil
 	}
+
 }
 
 // Mutation returns generated.MutationResolver implementation.
@@ -134,6 +112,6 @@ type mutationResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
 
 type ContextItems struct {
-	Sessionid *string
-	Database  *database.DB
+	Userid   *string
+	Database *database.DB
 }

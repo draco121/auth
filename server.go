@@ -4,6 +4,7 @@ import (
 	"authentication/database"
 	"authentication/graph"
 	"authentication/graph/generated"
+	"authentication/grpcclient"
 	"context"
 	"os"
 
@@ -24,7 +25,16 @@ func setUserContext() gin.HandlerFunc {
 		items := graph.ContextItems{Database: database.Connect()}
 		sessionid := ctx.Request.Header.Get("sessionid")
 		if sessionid != "" {
-			items.Sessionid = &sessionid
+			authorization_client, err := grpcclient.GetAuthorizationGrpcClient()
+			if err != nil {
+				defer authorization_client.Close()
+				res, err := authorization_client.ValidateJWT(sessionid)
+				if err != nil {
+					items.Userid = &res
+				}
+			} else {
+				return
+			}
 		}
 		c := context.WithValue(ctx.Request.Context(), "context_items", items)
 		ctx.Request = ctx.Request.WithContext(c)

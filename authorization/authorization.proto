@@ -17,7 +17,7 @@ message validatejwtoutput{
     string userid =1;
 }
 message deletejwtinput{
-    string token=1;
+    string userid=1;
 }
 message deletejwtoutput{
     bool res =1;
