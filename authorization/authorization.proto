@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+option go_package="./authorization";
+
+message createjwtinput{
+    string userid =1;
+}
+
+message createjwtoutput{
+    string token =1;
+}
+
+message validatejwtinput{
+    string token =1;
+}
+message validatejwtoutput{
+    string userid =1;
+}
+message deletejwtinput{
+    string userid=1;
+}
+message deletejwtoutput{
+    bool res =1;
+}
+
+service Authorization {
+    rpc CreateJWT(createjwtinput) returns (createjwtoutput){};
+    rpc DeleteJWT(deletejwtinput) returns (deletejwtoutput){};
+    rpc ValidateJWT(validatejwtinput) returns (validatejwtoutput){};
+}
