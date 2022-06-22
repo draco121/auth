@@ -36,8 +36,8 @@ func (u *AuthorizationGrpcClient) CreateJWT(id string) (string, error) {
 	}
 }
 
-func (u *AuthorizationGrpcClient) DeleteJWT(token string) (bool, error) {
-	request := &authorization.Deletejwtinput{Token: token}
+func (u *AuthorizationGrpcClient) DeleteJWT(userid string) (bool, error) {
+	request := &authorization.Deletejwtinput{Userid: userid}
 	response, err := u.AuthorizationClient.DeleteJWT(context.Background(), request)
 	if err != nil {
 		return false, err
